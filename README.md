@@ -11,8 +11,8 @@ A Go tool that finds duplicated string literals in Go source files.
 │       └── main.go
 ├── pkg/
 │   └── duplicates/       # Core logic for finding duplicated literals
-│       └── duplicates.go
-├── example.go            # Example file for testing
+│       ├── duplicates.go
+│       └── duplicates_test.go
 ├── Makefile              # Build automation
 └── go.mod
 ```
@@ -36,7 +36,8 @@ Run it on a Go file:
 
 Example:
 ```bash
-./gorefactor example.go
+./gorefactor cmd/gorefactor/main.go
+./gorefactor pkg/duplicates/duplicates.go
 ```
 
 ## Makefile Targets
@@ -45,6 +46,25 @@ Example:
 - `make clean` - Remove the binary
 - `make test` - Run tests
 - `make install` - Install to GOPATH/bin
+
+## Testing
+
+Run the test suite:
+```bash
+make test
+```
+
+Or using go directly:
+```bash
+go test -v ./...
+```
+
+The test suite includes:
+- Finding duplicates in test files
+- Handling files with no duplicates
+- Error handling for invalid files
+- Error handling for invalid Go code
+- Multiple duplicate detection
 
 ## How it works
 

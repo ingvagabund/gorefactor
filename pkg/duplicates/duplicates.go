@@ -1,6 +1,7 @@
 package duplicates
 
 import (
+	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -13,30 +14,37 @@ type StringLiteral struct {
 	Line  int
 }
 
-// Result contains the duplicated string literals found in a file
-type Result struct {
-	// Map from string value to list of line numbers where it appears
-	Duplicates map[string][]int
+// DuplicateGroup represents a group of duplicated string literals with a suggestion
+type DuplicateGroup struct {
+	Value      string `json:"value"`
+	Lines      []int  `json:"lines"`
+	Suggestion string `json:"suggestion"`
 }
 
-// FindInFile parses a Go file and finds all duplicated string literals
-func FindInFile(filePath string) (*Result, error) {
-	// Create a new token file set
-	fset := token.NewFileSet()
+// Result contains the duplicated string literals found in a file
+type Result struct {
+	FilePath   string          `json:"file_path"`
+	Duplicates []DuplicateGroup `json:"duplicates"`
+}
 
-	// Parse the Go file
+// FindInFile parses a Go file and finds all duplicated string literals.
+// minCount sets the minimum number of occurrences to report (clamped to 2 if lower).
+func FindInFile(filePath string, minCount int) (*Result, error) {
+	if minCount < 2 {
+		minCount = 2
+	}
+
+	fset := token.NewFileSet()
 	node, err := parser.ParseFile(fset, filePath, nil, parser.ParseComments)
 	if err != nil {
 		return nil, err
 	}
 
-	// Collect all string literals
 	literals := collectStringLiterals(fset, node)
-
-	// Find duplicates
-	duplicates := findDuplicates(literals)
+	duplicates := findDuplicates(literals, minCount)
 
 	return &Result{
+		FilePath:   filePath,
 		Duplicates: duplicates,
 	}, nil
 }
@@ -61,23 +69,33 @@ func collectStringLiterals(fset *token.FileSet, node *ast.File) []StringLiteral 
 	return literals
 }
 
-// findDuplicates identifies string literals that appear more than once
-func findDuplicates(literals []StringLiteral) map[string][]int {
-	// Map from string value to list of line numbers
+// findDuplicates groups literals by value, keeps those meeting minCount,
+// and returns them sorted by value for deterministic output.
+func findDuplicates(literals []StringLiteral, minCount int) []DuplicateGroup {
 	literalMap := make(map[string][]int)
-
 	for _, lit := range literals {
 		literalMap[lit.Value] = append(literalMap[lit.Value], lit.Line)
 	}
 
-	// Filter to only keep duplicates
-	duplicates := make(map[string][]int)
+	groups := []DuplicateGroup{}
 	for value, lines := range literalMap {
-		if len(lines) > 1 {
+		if len(lines) >= minCount {
 			sort.Ints(lines)
-			duplicates[value] = lines
+			groups = append(groups, DuplicateGroup{
+				Value:      value,
+				Lines:      lines,
+				Suggestion: generateSuggestion(value, len(lines)),
+			})
 		}
 	}
 
-	return duplicates
+	sort.Slice(groups, func(i, j int) bool {
+		return groups[i].Value < groups[j].Value
+	})
+	return groups
+}
+
+// generateSuggestion creates a human-readable suggestion message for a duplicate group
+func generateSuggestion(value string, count int) string {
+	return fmt.Sprintf(`String %s appears %d times. Consider extracting to a package-level constant.`, value, count)
 }

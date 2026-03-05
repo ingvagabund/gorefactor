@@ -1,16 +1,21 @@
-.PHONY: build clean test install
+.PHONY: build clean test install vet
 
 BINARY_NAME=gorefactor
 CMD_PATH=./cmd/gorefactor
+BIN_DIR=bin
 
 build:
-	go build -o $(BINARY_NAME) $(CMD_PATH)
+	@mkdir -p $(BIN_DIR)
+	go build -o $(BIN_DIR)/$(BINARY_NAME) $(CMD_PATH)
 
 clean:
-	rm -f $(BINARY_NAME)
+	rm -rf $(BIN_DIR)
 
 test:
-	go test -v ./...
+	go test -race -v ./...
+
+vet:
+	go vet ./...
 
 install:
 	go install $(CMD_PATH)

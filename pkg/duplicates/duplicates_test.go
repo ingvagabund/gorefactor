@@ -7,59 +7,32 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/ingvagabund/gorefactor/pkg/duplicates/testdata"
 )
 
 func TestFindInFile(t *testing.T) {
 	tests := []struct {
 		name           string
+		assetFile      string
 		code           string
 		minCount       int
 		wantErr        bool
 		wantDuplicates map[string][]int
 	}{
 		{
-			name: "duplicates found",
-			code: `package main
-
-import "fmt"
-
-func example() {
-	name := "example"
-	fmt.Println("Hello, World!")
-	message := "Hello, World!"
-	fmt.Println(message)
-
-	if name == "example" {
-		fmt.Println("This is an example")
-	}
-
-	var greeting = "Hello, World!"
-	fmt.Println(greeting)
-
-	// Another use of "example"
-	testName := "example"
-	fmt.Println(testName)
-}
-`,
-			minCount: 2,
-			wantErr:  false,
+			name:      "duplicates found",
+			assetFile: "assets/duplicates_found.go",
+			minCount:  2,
+			wantErr:   false,
 			wantDuplicates: map[string][]int{
 				`"Hello, World!"`: {7, 8, 15},
 				`"example"`:       {6, 11, 19},
 			},
 		},
 		{
-			name: "no duplicates",
-			code: `package main
-
-import "fmt"
-
-func main() {
-	fmt.Println("Hello")
-	fmt.Println("World")
-	name := "test"
-}
-`,
+			name:           "no duplicates",
+			assetFile:      "assets/no_duplicates.go",
 			minCount:       2,
 			wantErr:        false,
 			wantDuplicates: map[string][]int{},
@@ -72,47 +45,26 @@ func main() {
 		},
 		{
 			name: "empty file",
-			code: `package main
-`,
+			code: `package main`,
 			minCount:       2,
 			wantErr:        false,
 			wantDuplicates: map[string][]int{},
 		},
 		{
-			name: "multiple different duplicates",
-			code: `package main
-
-func test() {
-	a := "foo"
-	b := "bar"
-	c := "foo"
-	d := "bar"
-	e := "foo"
-	f := "baz"
-}
-`,
-			minCount: 2,
-			wantErr:  false,
+			name:      "multiple different duplicates",
+			assetFile: "assets/min_count_filtering.go",
+			minCount:  2,
+			wantErr:   false,
 			wantDuplicates: map[string][]int{
 				`"foo"`: {4, 6, 8},
 				`"bar"`: {5, 7},
 			},
 		},
 		{
-			name: "min-count filtering",
-			code: `package main
-
-func test() {
-	a := "foo"
-	b := "bar"
-	c := "foo"
-	d := "bar"
-	e := "foo"
-	f := "baz"
-}
-`,
-			minCount: 3,
-			wantErr:  false,
+			name:      "min-count filtering",
+			assetFile: "assets/min_count_filtering.go",
+			minCount:  3,
+			wantErr:   false,
 			wantDuplicates: map[string][]int{
 				`"foo"`: {4, 6, 8},
 			},
@@ -124,7 +76,13 @@ func test() {
 			tmpDir := t.TempDir()
 			testFile := filepath.Join(tmpDir, "test.go")
 
-			err := os.WriteFile(testFile, []byte(tt.code), 0644)
+			var code []byte
+			if tt.code != "" {
+				code = []byte(tt.code)
+			} else {
+				code = testdata.MustAsset(tt.assetFile)
+			}
+			err := os.WriteFile(testFile, code, 0644)
 			if err != nil {
 				t.Fatalf("Failed to create test file: %v", err)
 			}

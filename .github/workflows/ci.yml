@@ -8,14 +8,25 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout source
+        uses: actions/checkout@v6
+
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
-          go-version: '1.24'
+          go-version-file: go.mod
+
+      - name: Install all tools
+        run: make tools
+
+      - name: Run lint
+        run: make lint
+
       - name: Run tests
         run: make test
+
       - name: Run vet
         run: make vet
+
       - name: Build
         run: make build

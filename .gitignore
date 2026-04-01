@@ -4,6 +4,9 @@
 # Build output
 bin/
 
+# Local tool binaries
+tmp/
+
 # Binaries for programs and plugins
 *.exe
 *.exe~
